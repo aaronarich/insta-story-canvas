@@ -1,0 +1,33 @@
+{
+  "short_name": "Story Canvas",
+  "name": "Story Canvas - Instagram Story Editor",
+  "description": "Create perfectly sized Instagram stories with custom white borders",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#111827",
+  "background_color": "#F3F4F6",
+  "orientation": "portrait",
+  "scope": "/",
+  "categories": ["photo", "productivity"],
+  "screenshots": [
+    {
+      "src": "/screenshot.png",
+      "type": "image/png",
+      "sizes": "1170x2532"
+    }
+  ]
+}

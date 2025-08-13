@@ -13,7 +13,13 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to pick and save images.",
+        "NSPhotoLibraryAddUsageDescription": "This app saves the composed canvas image to your photo library.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.aaronarich.instastorycanvas"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +29,30 @@
       "edgeToEdgeEnabled": true
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "Story Canvas",
+      "shortName": "Story Canvas",
+      "description": "Create perfectly sized Instagram stories with custom white borders",
+      "display": "standalone",
+      "themeColor": "#111827",
+      "backgroundColor": "#F3F4F6",
+      "orientation": "portrait",
+      "scope": "/",
+      "startUrl": "/",
+      "bundler": "metro",
+      "preferRelatedApplications": false
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9da44641-6d8c-46cf-a2aa-9c0bc4b7b34a"
+      }
+    },
+    "owner": "aaronarich",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/9da44641-6d8c-46cf-a2aa-9c0bc4b7b34a"
     }
   }
 }
