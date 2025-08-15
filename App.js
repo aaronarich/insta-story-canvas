@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { SafeAreaView, StyleSheet, Text, View, Pressable, Image, ActivityIndicator, Alert, Platform } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
+import { SafeAreaView, StyleSheet, Text, View, Pressable, Image, ActivityIndicator, Alert, Platform, Dimensions, ScrollView } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import Slider from '@react-native-community/slider';
@@ -19,9 +19,23 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+  const [windowDimensions, setWindowDimensions] = useState(() => {
+    const { width, height } = Dimensions.get('window');
+    return { width, height };
+  });
 
   const viewShotRef = useRef(null);
   const canvasRef = useRef(null);
+
+  // Listen for orientation changes and window resizing
+  useEffect(() => {
+    const updateDimensions = ({ window }) => {
+      setWindowDimensions({ width: window.width, height: window.height });
+    };
+
+    const subscription = Dimensions.addEventListener('change', updateDimensions);
+    return () => subscription?.remove();
+  }, []);
 
   const requestPermissionsIfNeeded = useCallback(async () => {
     // Image picking (read)
@@ -200,8 +214,51 @@ export default function App() {
     };
   }, [selectedAsset, imageAspectRatio, scale]);
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
+  // Calculate responsive canvas dimensions
+  const responsiveCanvasStyle = useMemo(() => {
+    const { width: screenWidth, height: screenHeight } = windowDimensions;
+    const canvasAspectRatio = CANVAS_WIDTH / CANVAS_HEIGHT;
+    
+    // Reserve space for controls and padding
+    const controlsHeight = 280; // Approximate height for header + controls
+    const paddingVertical = 32; // Total vertical padding
+    const paddingHorizontal = 40; // Total horizontal padding
+    
+    const availableHeight = screenHeight - controlsHeight - paddingVertical;
+    const availableWidth = screenWidth - paddingHorizontal;
+    
+    let canvasWidth, canvasHeight;
+    
+    // Calculate maximum dimensions that fit within available space
+    if (availableWidth / availableHeight > canvasAspectRatio) {
+      // Height is the limiting factor
+      canvasHeight = Math.min(availableHeight, 600); // Max height of 600 for better UX
+      canvasWidth = canvasHeight * canvasAspectRatio;
+    } else {
+      // Width is the limiting factor
+      canvasWidth = Math.min(availableWidth, screenWidth * 0.9);
+      canvasHeight = canvasWidth / canvasAspectRatio;
+      
+      // If calculated height exceeds available height, recalculate based on height
+      if (canvasHeight > availableHeight) {
+        canvasHeight = availableHeight;
+        canvasWidth = canvasHeight * canvasAspectRatio;
+      }
+    }
+    
+    return {
+      width: canvasWidth,
+      height: canvasHeight,
+      maxWidth: '100%',
+      aspectRatio: canvasAspectRatio,
+    };
+  }, [windowDimensions]);
+
+  // Determine if we need scrolling based on screen height
+  const needsScrolling = windowDimensions.height < 700;
+
+  const content = (
+    <>
       <StatusBar style="dark" />
 
       <View style={styles.header}>
@@ -247,7 +304,7 @@ export default function App() {
       <View style={styles.previewWrapper}>
         <ViewShot
           ref={canvasRef}
-          style={[styles.viewShot]}
+          style={[styles.viewShot, responsiveCanvasStyle]}
           collapsable={false}
         >
           <View
@@ -273,7 +330,24 @@ export default function App() {
           </View>
         </ViewShot>
       </View>
+    </>
+  );
 
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      {needsScrolling ? (
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {content}
+        </ScrollView>
+      ) : (
+        <View style={styles.container}>
+          {content}
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -282,6 +356,15 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F3F4F6',
+  },
+  container: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   header: {
     paddingHorizontal: 16,
@@ -354,10 +437,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    minHeight: 200, // Ensure minimum height for canvas
   },
   viewShot: {
-    width: '85%',
-    aspectRatio: CANVAS_WIDTH / CANVAS_HEIGHT,
     borderRadius: 20,
     overflow: 'hidden',
     alignItems: 'center',
