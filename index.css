@@ -57,7 +57,7 @@ canvas {
   justify-content: center;
   align-items: center;
   gap: 1rem;
-  padding-bottom: max(2rem, calc(env(safe-area-inset-bottom) + 1rem));
+  padding-bottom: max(4rem, calc(env(safe-area-inset-bottom) + 2rem));
 }
 
 .control-group {
