@@ -48,15 +48,16 @@ canvas {
 }
 
 .controls {
-  padding: 1.5rem 1rem;
+  padding: 1rem 1rem;
   background: var(--glass-bg);
   backdrop-filter: blur(20px);
   border-top: 1px solid var(--glass-border);
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
-  gap: 1.5rem;
-  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  gap: 1rem;
+  padding-bottom: max(2rem, calc(env(safe-area-inset-bottom) + 1rem));
 }
 
 .control-group {
@@ -67,9 +68,16 @@ canvas {
 
 .slider-group {
   flex: 1;
+  min-width: 200px;
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .slider-group label {
