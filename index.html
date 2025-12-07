@@ -19,6 +19,11 @@
       <canvas id="story-canvas"></canvas>
     </main>
 
+    <div class="mode-tabs">
+      <button class="tab-btn active" data-mode="story">Story Canvas</button>
+      <button class="tab-btn" data-mode="photo">Photo Filter</button>
+    </div>
+
     <footer class="controls">
       <div class="control-group">
         <label for="image-upload" class="icon-btn" title="Add Image">
@@ -32,26 +37,33 @@
         <input type="file" id="image-upload" accept="image/*" hidden />
       </div>
 
-      <div class="control-group slider-group">
-        <label for="scale-slider">Size: <span id="scale-value">1.00x</span></label>
-        <input type="range" id="scale-slider" min="0.1" max="3" step="0.01" value="1" />
-        <button id="fav-btn" class="icon-btn small" title="Save as Favorite Size">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path
-              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-          </svg>
-        </button>
-      </div>
-
-      <div class="control-group">
-        <input type="color" id="bg-color" value="#ffffff" title="Background Color" />
+      <!-- Story Mode Specific Controls -->
+      <div id="story-controls" class="control-section">
+        <div class="control-group slider-group">
+          <label for="scale-slider">Size: <span id="scale-value">1.00x</span></label>
+          <input type="range" id="scale-slider" min="0.1" max="3" step="0.01" value="1" />
+          <button id="fav-btn" class="icon-btn small" title="Save as Favorite Size">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path
+                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+          </button>
+        </div>
+  
+        <div class="control-group">
+          <input type="color" id="bg-color" value="#ffffff" title="Background Color" />
+        </div>
       </div>
 
       <div class="control-group filter-group">
         <select id="filter-select" class="filter-select">
           <option value="none">Normal</option>
           <option value="portra">Portra 400</option>
+          <option value="ektar">Kodak Ektar 100</option>
+          <option value="velvia">Fuji Velvia 50</option>
+          <option value="pro400h">Fuji Pro 400H</option>
+          <option value="expired">Expired Film</option>
           <option value="ilford">Ilford B&W</option>
           <option value="leak">Light Leak</option>
           <option value="dither">Game Boy</option>

@@ -19,6 +19,10 @@ let scale = 1;
 let backgroundColor = '#ffffff';
 let currentFilter = 'none';
 let leakSeed = Math.random();
+let appMode = 'story'; // 'story' | 'photo'
+
+const storyControls = document.getElementById('story-controls');
+const tabBtns = document.querySelectorAll('.tab-btn');
 
 // Initialize canvas
 function initCanvas() {
@@ -29,42 +33,118 @@ function initCanvas() {
 
 // Draw everything
 function draw() {
-    // Clear and fill background
-    ctx.fillStyle = backgroundColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (appMode === 'story') {
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
+
+        // Clear and fill background
+        ctx.fillStyle = backgroundColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } else {
+        // Photo Mode: fit canvas to image
+        if (currentImage) {
+            canvas.width = currentImage.width;
+            canvas.height = currentImage.height;
+        } else {
+            // Default placeholder
+            canvas.width = 1080;
+            canvas.height = 1080;
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#333';
+            ctx.font = '40px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Select an image', canvas.width / 2, canvas.height / 2);
+            return;
+        }
+    }
 
     // Save context for filters
     ctx.save();
 
     if (currentImage) {
-        const imgWidth = currentImage.width * scale;
-        const imgHeight = currentImage.height * scale;
-        const x = (canvas.width - imgWidth) / 2;
-        const y = (canvas.height - imgHeight) / 2;
+        let x = 0, y = 0, imgWidth = 0, imgHeight = 0;
+
+        if (appMode === 'story') {
+            imgWidth = currentImage.width * scale;
+            imgHeight = currentImage.height * scale;
+            x = (canvas.width - imgWidth) / 2;
+            y = (canvas.height - imgHeight) / 2;
+        } else {
+            imgWidth = canvas.width;
+            imgHeight = canvas.height;
+            x = 0;
+            y = 0;
+        }
 
         // Apply Filters
-        if (currentFilter === 'portra') {
-            ctx.filter = 'contrast(1.1) saturate(1.2) sepia(0.1) brightness(1.05)';
-        } else {
-            ctx.filter = 'none';
-        }
+        applyFilterBase(currentFilter);
 
         ctx.drawImage(currentImage, x, y, imgWidth, imgHeight);
 
         // Post-processing effects (Grain, Leaks, Dither)
         ctx.filter = 'none'; // Reset filter for overlays
 
-        if (currentFilter === 'portra') {
-            applyGrain();
-        } else if (currentFilter === 'ilford') {
-            applyIlford();
-        } else if (currentFilter === 'leak') {
-            applyLightLeak();
-        } else if (currentFilter === 'dither') {
-            applyDither();
-        }
+        applyPostProcess(currentFilter);
     }
     ctx.restore();
+}
+
+function applyFilterBase(filter) {
+    switch (filter) {
+        case 'portra':
+            ctx.filter = 'contrast(1.1) saturate(1.2) sepia(0.1) brightness(1.05)';
+            break;
+        case 'ektar':
+            ctx.filter = 'contrast(1.15) saturate(1.4) brightness(1.0)';
+            break;
+        case 'velvia':
+            ctx.filter = 'contrast(1.2) saturate(1.6) sepia(0.1) hue-rotate(-10deg)';
+            break;
+        case 'pro400h':
+            ctx.filter = 'brightness(1.1) contrast(0.95) saturate(1.1) sepia(0.2)';
+            break;
+        case 'expired':
+            ctx.filter = 'contrast(0.9) brightness(1.1) sepia(0.4) saturate(0.8)';
+            break;
+        default:
+            ctx.filter = 'none';
+    }
+}
+
+function applyPostProcess(filter) {
+    if (filter === 'portra') applyGrain();
+    else if (filter === 'ilford') applyIlford();
+    else if (filter === 'leak') applyLightLeak();
+    else if (filter === 'dither') applyDither();
+    else if (filter === 'ektar') applyGrain(); // Subtle grain
+    else if (filter === 'velvia') { /* Cleaner look, minimal grain */ }
+    else if (filter === 'pro400h') applyPro400HOverlay();
+    else if (filter === 'expired') applyExpiredOverlay();
+}
+
+function applyPro400HOverlay() {
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillStyle = 'rgba(0, 50, 50, 0.1)'; // Cool cyan tint
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Minimal Grain
+    applyGrain(0.05);
+}
+
+function applyExpiredOverlay() {
+    // Color shifting
+    ctx.globalCompositeOperation = 'screen';
+    ctx.fillStyle = 'rgba(255, 0, 100, 0.05)'; // Magenta lift
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = 'rgba(100, 100, 0, 0.1)'; // Green shadows
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Heavy Grain
+    applyGrain(0.25);
+    // Random scratches/dust could be added here
 }
 
 function applyIlford() {
@@ -121,7 +201,7 @@ function applyIlford() {
     ctx.globalCompositeOperation = 'source-over';
 }
 
-function applyGrain() {
+function applyGrain(strength = 0.15) {
     const w = canvas.width;
     const h = canvas.height;
 
@@ -162,7 +242,8 @@ function applyGrain() {
         window.noisePattern = ctx.createPattern(noiseCanvas, 'repeat');
     }
 
-    ctx.globalAlpha = 0.15; // Grain strength
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.globalAlpha = strength;
     ctx.fillStyle = window.noisePattern;
     ctx.fillRect(0, 0, w, h);
     ctx.globalAlpha = 1.0;
@@ -280,7 +361,7 @@ fileInput.addEventListener('change', (e) => {
             img.onload = () => {
                 currentImage = img;
                 // Reset scale to fit width initially if too large
-                if (img.width > canvas.width) {
+                if (appMode === 'story' && img.width > canvas.width) {
                     scale = canvas.width / img.width;
                     scaleSlider.value = scale;
                 }
@@ -470,6 +551,27 @@ initCanvas();
 
 // Register Service Worker
 import { registerSW } from 'virtual:pwa-register'
+
+tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        // Toggle active class
+        tabBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Set mode
+        appMode = btn.dataset.mode;
+
+        // Show/Hide controls
+        if (appMode === 'story') {
+            storyControls.classList.remove('hidden');
+        } else {
+            storyControls.classList.add('hidden');
+        }
+
+        // Redraw
+        draw();
+    });
+});
 
 const updateSW = registerSW({
     onNeedRefresh() {
