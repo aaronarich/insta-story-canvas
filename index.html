@@ -50,7 +50,7 @@
             </svg>
           </button>
         </div>
-  
+
         <div class="control-group">
           <input type="color" id="bg-color" value="#ffffff" title="Background Color" />
         </div>
@@ -63,11 +63,33 @@
           <option value="ektar">Kodak Ektar 100</option>
           <option value="velvia">Fuji Velvia 50</option>
           <option value="pro400h">Fuji Pro 400H</option>
+          <option value="cinestill">Cinestill 800T</option>
+          <option value="polaroid">Polaroid 600</option>
           <option value="expired">Expired Film</option>
           <option value="ilford">Ilford B&W</option>
-          <option value="leak">Light Leak</option>
-          <option value="dither">Game Boy</option>
+          <option value="bw-high">High Contrast B&W</option>
         </select>
+
+        <button id="grain-toggle-btn" class="icon-btn" title="Toggle Film Grain">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+            <circle cx="9" cy="9" r="1" />
+            <circle cx="15" cy="15" r="1" />
+            <circle cx="15" cy="9" r="1" />
+            <circle cx="9" cy="15" r="1" />
+          </svg>
+        </button>
+
+        <button id="leak-toggle-btn" class="icon-btn" title="Toggle Light Leaks">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+            <path
+              d="M12 4v1M17.66 6.344l-.828.828M20.005 12.004h-1M17.66 17.664l-.828-.828M12 20.01V19M6.34 17.664l.828-.828M3.995 12.004h1M6.34 6.344l.828.828" />
+          </svg>
+        </button>
+
         <button id="random-leak-btn" class="icon-btn small hidden" title="Randomize Leak">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

@@ -1,3 +1,5 @@
+import { registerSW } from 'virtual:pwa-register'
+
 // Canvas dimensions for Instagram Stories
 const CANVAS_WIDTH = 2790;
 const CANVAS_HEIGHT = 4960;
@@ -19,10 +21,12 @@ let scale = 1;
 let backgroundColor = '#ffffff';
 let currentFilter = 'none';
 let leakSeed = Math.random();
+let isLightLeakEnabled = false;
 let appMode = 'story'; // 'story' | 'photo'
 
-const storyControls = document.getElementById('story-controls');
-const tabBtns = document.querySelectorAll('.tab-btn');
+const leakToggleBtn = document.getElementById('leak-toggle-btn');
+const grainToggleBtn = document.getElementById('grain-toggle-btn');
+let isGrainEnabled = false;
 
 // Initialize canvas
 function initCanvas() {
@@ -86,6 +90,11 @@ function draw() {
         ctx.filter = 'none'; // Reset filter for overlays
 
         applyPostProcess(currentFilter);
+
+        // Apply Light Leak independently if enabled
+        if (isLightLeakEnabled) {
+            applyLightLeak();
+        }
     }
     ctx.restore();
 }
@@ -93,19 +102,35 @@ function draw() {
 function applyFilterBase(filter) {
     switch (filter) {
         case 'portra':
-            ctx.filter = 'contrast(1.1) saturate(1.2) sepia(0.1) brightness(1.05)';
+            ctx.filter = 'contrast(1.15) saturate(1.3) sepia(0.15) brightness(1.05)';
             break;
         case 'ektar':
-            ctx.filter = 'contrast(1.15) saturate(1.4) brightness(1.0)';
+            // High contrast, Punchy Red/Blue
+            ctx.filter = 'contrast(1.25) saturate(1.4) brightness(1.02) sepia(0.05)';
             break;
         case 'velvia':
-            ctx.filter = 'contrast(1.2) saturate(1.6) sepia(0.1) hue-rotate(-10deg)';
+            // Deep blacks, very high saturation, slight magenta shift
+            ctx.filter = 'contrast(1.3) saturate(1.8) brightness(0.95) hue-rotate(-5deg)';
             break;
         case 'pro400h':
-            ctx.filter = 'brightness(1.1) contrast(0.95) saturate(1.1) sepia(0.2)';
+            // Soft, very pastel, overexposed feel
+            ctx.filter = 'brightness(1.2) contrast(0.9) saturate(1.05) sepia(0.1)';
+            break;
+        case 'cinestill':
+            // Tungsten balanced, cool, halation (simulated via glow/blur in post)
+            ctx.filter = 'contrast(1.1) saturate(1.2) hue-rotate(-10deg) brightness(1.05)';
+            break;
+        case 'polaroid':
+            // Warm, faded blacks, slight green tint
+            ctx.filter = 'contrast(0.9) brightness(1.1) saturate(0.8) sepia(0.25)';
             break;
         case 'expired':
-            ctx.filter = 'contrast(0.9) brightness(1.1) sepia(0.4) saturate(0.8)';
+            // More dramatic fade
+            ctx.filter = 'contrast(0.85) brightness(1.2) sepia(0.5) saturate(0.7)';
+            break;
+        case 'bw-high':
+            // Crushed blacks, high contrast B&W
+            ctx.filter = 'grayscale(100%) contrast(1.5) brightness(1.05)';
             break;
         default:
             ctx.filter = 'none';
@@ -113,95 +138,111 @@ function applyFilterBase(filter) {
 }
 
 function applyPostProcess(filter) {
-    if (filter === 'portra') applyGrain();
-    else if (filter === 'ilford') applyIlford();
-    else if (filter === 'leak') applyLightLeak();
-    else if (filter === 'dither') applyDither();
-    else if (filter === 'ektar') applyGrain(); // Subtle grain
-    else if (filter === 'velvia') { /* Cleaner look, minimal grain */ }
-    else if (filter === 'pro400h') applyPro400HOverlay();
-    else if (filter === 'expired') applyExpiredOverlay();
+    // Grain now applied conditionally based on toggle
+    if (isGrainEnabled) {
+        if (filter === 'ektar') applyGrain(0.22);
+        else if (filter === 'velvia') applyGrain(0.15);
+        else if (filter === 'pro400h') applyGrain(0.12); // Added manually here since overlay handles color
+        else if (filter === 'cinestill') applyGrain(0.15);
+        else if (filter === 'polaroid') applyGrain(0.2);
+        else if (filter === 'expired') applyGrain(0.5);
+        else if (filter === 'bw-high') applyGrain(0.4);
+        else applyGrain(0.18); // Default grain for other filters (portra, ilford, none)
+    }
+
+    if (filter === 'pro400h') applyPro400HOverlayBase();
+    else if (filter === 'cinestill') applyCinestillOverlayBase();
+    else if (filter === 'polaroid') applyPolaroidOverlayBase();
+    else if (filter === 'expired') applyExpiredOverlayBase();
 }
 
-function applyPro400HOverlay() {
+// Renamed to *Base to indicate they don't include grain anymore (grain handled in main loop)
+function applyPro400HOverlayBase() {
     ctx.globalCompositeOperation = 'overlay';
-    ctx.fillStyle = 'rgba(0, 50, 50, 0.1)'; // Cool cyan tint
+    ctx.fillStyle = 'rgba(0, 100, 100, 0.15)'; // Cyan tint
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Minimal Grain
-    applyGrain(0.05);
+    // Lift blacks (lighten layer)
+    ctx.globalCompositeOperation = 'lighten';
+    ctx.fillStyle = 'rgba(0, 50, 70, 0.1)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
-function applyExpiredOverlay() {
-    // Color shifting
+function applyCinestillOverlayBase() {
+    // Halation simulation
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.fillStyle = 'rgba(0, 50, 255, 0.15)'; // Blueish cool tint
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Slight red lift
     ctx.globalCompositeOperation = 'screen';
-    ctx.fillStyle = 'rgba(255, 0, 100, 0.05)'; // Magenta lift
+    ctx.fillStyle = 'rgba(50, 0, 0, 0.05)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function applyPolaroidOverlayBase() {
+    // Warm vintage wash
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillStyle = 'rgba(255, 150, 50, 0.2)'; // Orange/Warm
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.globalCompositeOperation = 'multiply';
-    ctx.fillStyle = 'rgba(100, 100, 0, 0.1)'; // Green shadows
+    ctx.fillStyle = 'rgba(230, 230, 210, 0.2)'; // Creamy look
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Heavy Grain
-    applyGrain(0.25);
-    // Random scratches/dust could be added here
+    // Vignette
+    const gradient = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, canvas.width / 3, canvas.width / 2, canvas.height / 2, canvas.width);
+    gradient.addColorStop(0, 'rgba(0,0,0,0)');
+    gradient.addColorStop(1, 'rgba(50,40,30,0.5)');
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function applyExpiredOverlayBase() {
+    // Color shifting
+    ctx.globalCompositeOperation = 'screen';
+    ctx.fillStyle = 'rgba(255, 0, 100, 0.12)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = 'rgba(120, 120, 0, 0.2)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Vignette
+    const gradient = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, canvas.width / 3, canvas.width / 2, canvas.height / 2, canvas.width);
+    gradient.addColorStop(0, 'rgba(0,0,0,0)');
+    gradient.addColorStop(1, 'rgba(0,0,0,0.4)');
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
 function applyIlford() {
     // Classic Ilford B&W film look
-    // High contrast grayscale with slight grain
     const w = canvas.width;
     const h = canvas.height;
 
-    // Get image data for grayscale conversion
     const idata = ctx.getImageData(0, 0, w, h);
     const data = idata.data;
 
-    // Convert to grayscale with contrast boost
     for (let i = 0; i < data.length; i += 4) {
-        // Weighted grayscale conversion
         const brightness = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-
-        // Apply contrast curve (S-curve)
-        // Map 0-255 to a higher contrast range
         const contrasted = Math.pow(brightness / 255, 0.9) * 255;
         const final = Math.min(255, Math.max(0, contrasted * 1.15));
-
         data[i] = final;
         data[i + 1] = final;
         data[i + 2] = final;
     }
-
     ctx.putImageData(idata, 0, 0);
 
-    // Add subtle grain (less than Portra)
-    if (!window.noisePattern) {
-        const noiseCanvas = document.createElement('canvas');
-        noiseCanvas.width = 512;
-        noiseCanvas.height = 512;
-        const nCtx = noiseCanvas.getContext('2d');
-        const noiseData = nCtx.createImageData(512, 512);
-        const buffer32 = new Uint32Array(noiseData.data.buffer);
-        for (let i = 0; i < buffer32.length; i++) {
-            if (Math.random() < 0.5) {
-                buffer32[i] = 0xff000000;
-            } else {
-                buffer32[i] = 0xffffffff;
-            }
-        }
-        nCtx.putImageData(noiseData, 0, 0);
-        window.noisePattern = ctx.createPattern(noiseCanvas, 'repeat');
-    }
-
-    ctx.globalCompositeOperation = 'overlay';
-    ctx.globalAlpha = 0.08; // Subtle grain
-    ctx.fillStyle = window.noisePattern;
-    ctx.fillRect(0, 0, w, h);
-    ctx.globalAlpha = 1.0;
-    ctx.globalCompositeOperation = 'source-over';
+    // Grain handled by toggle+postProcess
 }
 
-function applyGrain(strength = 0.15) {
+// Reduced default grain as requested
+function applyGrain(strength = 0.18) {
     const w = canvas.width;
     const h = canvas.height;
 
@@ -284,83 +325,23 @@ function applyLightLeak() {
     ctx.globalCompositeOperation = 'source-over';
 }
 
-function applyDither() {
-    // Game Boy Camera effect
-    // 4-level grayscale (2-bit) with ordered dithering
-    const w = canvas.width;
-    const h = canvas.height;
-
-    // Get image data
-    const idata = ctx.getImageData(0, 0, w, h);
-    const data = idata.data;
-
-    // Game Boy Camera palette (4 shades)
-    const palette = [
-        0,      // Black
-        85,     // Dark gray (33%)
-        170,    // Light gray (66%)
-        255     // White
-    ];
-
-    // 4x4 Bayer matrix for ordered dithering
-    const bayerMatrix = [
-        [0, 8, 2, 10],
-        [12, 4, 14, 6],
-        [3, 11, 1, 9],
-        [15, 7, 13, 5]
-    ];
-
-    // Normalize Bayer matrix to 0-1 range
-    const bayerSize = 4;
-    const bayerScale = 16; // 4x4 = 16 levels
-
-    // Convert to grayscale and apply ordered dithering
-    for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-            const i = (y * w + x) * 4;
-
-            // Convert to grayscale
-            const brightness = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-
-            // Get Bayer threshold
-            const bayerX = x % bayerSize;
-            const bayerY = y % bayerSize;
-            const threshold = (bayerMatrix[bayerY][bayerX] / bayerScale) - 0.5;
-
-            // Add dithering noise and quantize to 4 levels
-            const dithered = brightness + (threshold * 64); // Adjust dither strength
-
-            // Quantize to nearest palette color
-            let nearestColor = palette[0];
-            let minDist = Math.abs(dithered - palette[0]);
-
-            for (let p = 1; p < palette.length; p++) {
-                const dist = Math.abs(dithered - palette[p]);
-                if (dist < minDist) {
-                    minDist = dist;
-                    nearestColor = palette[p];
-                }
-            }
-
-            data[i] = nearestColor;
-            data[i + 1] = nearestColor;
-            data[i + 2] = nearestColor;
-        }
-    }
-
-    ctx.putImageData(idata, 0, 0);
-}
+// function applyDither() REMOVED
 
 // Event Listeners
 fileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
+        // Reset value so the change event triggers even if the same file is selected again
+        e.target.value = '';
+
         const reader = new FileReader();
         reader.onload = (event) => {
             const img = new Image();
             img.onload = () => {
                 currentImage = img;
-                // Reset scale to fit width initially if too large
+                console.log('Image loaded:', img.width, img.height, 'Mode:', appMode);
+
+                // Reset scale to fit width initially if too large (only in Story mode)
                 if (appMode === 'story' && img.width > canvas.width) {
                     scale = canvas.width / img.width;
                     scaleSlider.value = scale;
@@ -384,10 +365,29 @@ scaleSlider.addEventListener('input', (e) => {
 
 filterSelect.addEventListener('change', (e) => {
     currentFilter = e.target.value;
-    if (currentFilter === 'leak') {
+    draw();
+});
+
+leakToggleBtn.addEventListener('click', () => {
+    isLightLeakEnabled = !isLightLeakEnabled;
+
+    if (isLightLeakEnabled) {
+        leakToggleBtn.classList.add('active-toggle');
         randomLeakBtn.classList.remove('hidden');
     } else {
+        leakToggleBtn.classList.remove('active-toggle');
         randomLeakBtn.classList.add('hidden');
+    }
+    draw();
+});
+
+grainToggleBtn.addEventListener('click', () => {
+    isGrainEnabled = !isGrainEnabled;
+
+    if (isGrainEnabled) {
+        grainToggleBtn.classList.add('active-toggle');
+    } else {
+        grainToggleBtn.classList.remove('active-toggle');
     }
     draw();
 });
@@ -549,8 +549,10 @@ favBtn.addEventListener('click', (e) => {
 // Initial draw
 initCanvas();
 
-// Register Service Worker
-import { registerSW } from 'virtual:pwa-register'
+// Attach tab event listeners
+// (Module scripts are deferred, so DOM is ready by the time this runs)
+const storyControls = document.getElementById('story-controls');
+const tabBtns = document.querySelectorAll('.tab-btn');
 
 tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {

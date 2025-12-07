@@ -153,6 +153,12 @@ canvas {
   transform: scale(0.95);
 }
 
+.icon-btn.active-toggle {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
 .icon-btn.small svg {
   width: 16px;
   height: 16px;
