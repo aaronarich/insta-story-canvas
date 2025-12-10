@@ -39,9 +39,10 @@
 
       <!-- Story Mode Specific Controls -->
       <div id="story-controls" class="control-section">
-        <div class="control-group slider-group">
-          <label for="scale-slider">Size: <span id="scale-value">1.00x</span></label>
-          <input type="range" id="scale-slider" min="0.1" max="3" step="0.01" value="1" />
+        <div class="control-group scale-buttons">
+          <button id="scale-down-btn" class="scale-btn" title="Decrease Size">−</button>
+          <span id="scale-value" class="scale-display">1.00x</span>
+          <button id="scale-up-btn" class="scale-btn" title="Increase Size">+</button>
           <button id="fav-btn" class="icon-btn small" title="Save as Favorite Size">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -91,6 +92,22 @@
         </button>
 
         <button id="random-leak-btn" class="icon-btn small hidden" title="Randomize Leak">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3" />
+          </svg>
+        </button>
+
+        <button id="prism-toggle-btn" class="icon-btn" title="Toggle Prism Effect">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 2 22 22 22" />
+            <line x1="12" y1="12" x2="20" y2="22" />
+            <line x1="12" y1="12" x2="4" y2="22" />
+          </svg>
+        </button>
+
+        <button id="random-prism-btn" class="icon-btn small hidden" title="Randomize Prism">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3" />

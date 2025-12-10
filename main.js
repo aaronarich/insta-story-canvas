@@ -7,7 +7,11 @@ const CANVAS_HEIGHT = 4960;
 const canvas = document.getElementById('story-canvas');
 const ctx = canvas.getContext('2d');
 const fileInput = document.getElementById('image-upload');
-const scaleSlider = document.getElementById('scale-slider');
+const scaleDownBtn = document.getElementById('scale-down-btn');
+const scaleUpBtn = document.getElementById('scale-up-btn');
+const SCALE_STEP = 0.01;
+const SCALE_MIN = 0.1;
+const SCALE_MAX = 3;
 const colorPicker = document.getElementById('bg-color');
 const saveBtn = document.getElementById('save-btn');
 const favBtn = document.getElementById('fav-btn');
@@ -26,7 +30,10 @@ let appMode = 'story'; // 'story' | 'photo'
 
 const leakToggleBtn = document.getElementById('leak-toggle-btn');
 const grainToggleBtn = document.getElementById('grain-toggle-btn');
+const prismToggleBtn = document.getElementById('prism-toggle-btn');
+const randomPrismBtn = document.getElementById('random-prism-btn');
 let isGrainEnabled = false;
+let isPrismEnabled = false;
 
 // Initialize canvas
 function initCanvas() {
@@ -95,6 +102,11 @@ function draw() {
         if (isLightLeakEnabled) {
             applyLightLeak();
         }
+
+        // Apply Prism effect if enabled
+        if (isPrismEnabled) {
+            applyPrismEffect();
+        }
     }
     ctx.restore();
 }
@@ -132,6 +144,10 @@ function applyFilterBase(filter) {
             // Crushed blacks, high contrast B&W
             ctx.filter = 'grayscale(100%) contrast(1.5) brightness(1.05)';
             break;
+        case 'ilford':
+            // Ilford B&W - base filter applied, main processing in post
+            ctx.filter = 'none';
+            break;
         default:
             ctx.filter = 'none';
     }
@@ -154,6 +170,7 @@ function applyPostProcess(filter) {
     else if (filter === 'cinestill') applyCinestillOverlayBase();
     else if (filter === 'polaroid') applyPolaroidOverlayBase();
     else if (filter === 'expired') applyExpiredOverlayBase();
+    else if (filter === 'ilford') applyIlford();
 }
 
 // Renamed to *Base to indicate they don't include grain anymore (grain handled in main loop)
@@ -295,6 +312,9 @@ function applyLightLeak() {
     const w = canvas.width;
     const h = canvas.height;
 
+    // Check if current filter is B&W
+    const isBW = currentFilter === 'ilford' || currentFilter === 'bw-high';
+
     // Seeded random (simple LCG)
     let seed = leakSeed * 2147483647;
     const random = () => {
@@ -313,15 +333,128 @@ function applyLightLeak() {
         const r = (w + h) / 3 * (0.5 + random());
 
         const gradient = ctx.createRadialGradient(x, y, 0, x, y, r);
-        // Warm colors: Orange, Red, Pink
-        const hue = 10 + random() * 40; // 10-50 (Red-Orange-Yellow)
-        gradient.addColorStop(0, `hsla(${hue}, 100%, 70%, 0.6)`);
-        gradient.addColorStop(1, `hsla(${hue}, 100%, 50%, 0)`);
+
+        if (isBW) {
+            // Grayscale light leaks for B&W filters
+            const lightness = 70 + random() * 20; // 70-90% lightness
+            gradient.addColorStop(0, `hsla(0, 0%, ${lightness}%, 0.6)`);
+            gradient.addColorStop(1, `hsla(0, 0%, ${lightness - 20}%, 0)`);
+        } else {
+            // Warm colors: Orange, Red, Pink
+            const hue = 10 + random() * 40; // 10-50 (Red-Orange-Yellow)
+            gradient.addColorStop(0, `hsla(${hue}, 100%, 70%, 0.6)`);
+            gradient.addColorStop(1, `hsla(${hue}, 100%, 50%, 0)`);
+        }
 
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, w, h);
     }
 
+    ctx.globalCompositeOperation = 'source-over';
+}
+
+function applyPrismEffect() {
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // Seeded random
+    let seed = (window.prismSeed || 0.45) * 2147483647;
+    const random = () => {
+        seed = (seed * 16807) % 2147483647;
+        return (seed - 1) / 2147483646;
+    };
+
+    if (!window.prismSeed) {
+        window.prismSeed = Math.random();
+    }
+
+    ctx.save();
+
+    // We want a very soft, dreamy look.
+    // Instead of sharp shapes, we'll use large, diffuse gradients.
+
+    const numFlares = 2 + Math.floor(random() * 2); // 2-3 large flares
+
+    for (let i = 0; i < numFlares; i++) {
+        // Position flares mostly at the edges/corners
+        const isLeft = random() > 0.5;
+        const x = isLeft ? w * (random() * 0.3) : w * (0.7 + random() * 0.3);
+        const y = h * (0.1 + random() * 0.8);
+
+        // Large radius for softness
+        const r = Math.max(w, h) * (0.4 + random() * 0.4);
+
+        const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+
+        // Pick a color palette based on reference images:
+        // Option A: Warm Amber/Gold (common in vintage prism shots)
+        // Option B: Cool Cyan/White (common in modern prism shots)
+        // Option C: Mixed
+
+        const palette = random();
+        if (palette < 0.4) {
+            // Warm Amber
+            grad.addColorStop(0, 'rgba(255, 200, 150, 0.4)'); // Bright warm center
+            grad.addColorStop(0.4, 'rgba(255, 100, 50, 0.2)'); // Red-orange mid
+            grad.addColorStop(0.7, 'rgba(100, 50, 0, 0.1)'); // Fading fast
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        } else if (palette < 0.7) {
+            // Cool Ethereal
+            grad.addColorStop(0, 'rgba(200, 240, 255, 0.3)'); // White-blue center
+            grad.addColorStop(0.4, 'rgba(100, 180, 255, 0.15)'); // Cyan mid
+            grad.addColorStop(0.8, 'rgba(0, 50, 100, 0)');
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        } else {
+            // Spectral/Rainbow (subtle)
+            grad.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
+            grad.addColorStop(0.2, 'rgba(255, 255, 0, 0.15)'); // Yellow
+            grad.addColorStop(0.4, 'rgba(255, 0, 0, 0.1)');   // Red
+            grad.addColorStop(0.6, 'rgba(0, 0, 255, 0.1)');   // Blue
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        }
+
+        // Use 'screen' or 'Overlay' for that light-leak feel
+        // Screen is safer for ensuring it looks like added light without darkening
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = grad;
+
+        // Save/Restore for transform
+        ctx.save();
+
+        // Squash the gradient slightly to make it look more like a flare streak?
+        // Or keep it round for soft bokeh. Let's try slight squashing.
+        ctx.translate(x, y);
+        ctx.scale(1 + random() * 0.5, 1); // Random horizontal stretch
+        ctx.rotate(random() * Math.PI * 2);
+        ctx.translate(-x, -y);
+
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    // Add a "Bokeh Field" - large, very faint circles for texture without lines
+    const numBokeh = 3 + Math.floor(random() * 5);
+
+    for (let i = 0; i < numBokeh; i++) {
+        const bx = random() * w;
+        const by = random() * h;
+        const br = w * (0.1 + random() * 0.2); // Medium sized soft circles
+
+        const bGrad = ctx.createRadialGradient(bx, by, 0, bx, by, br);
+        bGrad.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+        bGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = bGrad;
+        ctx.beginPath();
+        ctx.arc(bx, by, br, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    ctx.restore();
     ctx.globalCompositeOperation = 'source-over';
 }
 
@@ -344,7 +477,6 @@ fileInput.addEventListener('change', (e) => {
                 // Reset scale to fit width initially if too large (only in Story mode)
                 if (appMode === 'story' && img.width > canvas.width) {
                     scale = canvas.width / img.width;
-                    scaleSlider.value = scale;
                 }
                 scaleValue.textContent = `${scale.toFixed(2)}x`;
                 draw();
@@ -357,8 +489,14 @@ fileInput.addEventListener('change', (e) => {
 
 
 
-scaleSlider.addEventListener('input', (e) => {
-    scale = parseFloat(e.target.value);
+scaleDownBtn.addEventListener('click', () => {
+    scale = Math.max(SCALE_MIN, scale - SCALE_STEP);
+    scaleValue.textContent = `${scale.toFixed(2)}x`;
+    draw();
+});
+
+scaleUpBtn.addEventListener('click', () => {
+    scale = Math.min(SCALE_MAX, scale + SCALE_STEP);
     scaleValue.textContent = `${scale.toFixed(2)}x`;
     draw();
 });
@@ -392,8 +530,26 @@ grainToggleBtn.addEventListener('click', () => {
     draw();
 });
 
+prismToggleBtn.addEventListener('click', () => {
+    isPrismEnabled = !isPrismEnabled;
+
+    if (isPrismEnabled) {
+        prismToggleBtn.classList.add('active-toggle');
+        randomPrismBtn.classList.remove('hidden');
+    } else {
+        prismToggleBtn.classList.remove('active-toggle');
+        randomPrismBtn.classList.add('hidden');
+    }
+    draw();
+});
+
 randomLeakBtn.addEventListener('click', () => {
     leakSeed = Math.random();
+    draw();
+});
+
+randomPrismBtn.addEventListener('click', () => {
+    window.prismSeed = Math.random();
     draw();
 });
 
@@ -484,7 +640,6 @@ function loadFavorite() {
     const savedScale = localStorage.getItem('favScale');
     if (savedScale) {
         scale = parseFloat(savedScale);
-        scaleSlider.value = scale;
         scaleValue.textContent = `${scale.toFixed(2)}x`;
         draw();
         // Optional: Visual feedback
