@@ -142,7 +142,8 @@ function applyFilterBase(filter) {
             break;
         case 'bw-high':
             // Crushed blacks, high contrast B&W
-            ctx.filter = 'grayscale(100%) contrast(1.6) brightness(1.05)';
+            // Handled in post-process now for reliability
+            ctx.filter = 'none';
             break;
         case 'ilford':
             // Ilford B&W - base filter applied, main processing in post
@@ -171,6 +172,7 @@ function applyPostProcess(filter) {
     else if (filter === 'polaroid') applyPolaroidOverlayBase();
     else if (filter === 'expired') applyExpiredOverlayBase();
     else if (filter === 'ilford') applyIlford();
+    else if (filter === 'bw-high') applyBWHigh();
 }
 
 // Renamed to *Base to indicate they don't include grain anymore (grain handled in main loop)
@@ -255,7 +257,43 @@ function applyIlford() {
     }
     ctx.putImageData(idata, 0, 0);
 
+    ctx.putImageData(idata, 0, 0);
+
     // Grain handled by toggle+postProcess
+}
+
+function applyBWHigh() {
+    // High Contrast B&W Manual Implementation
+    const w = canvas.width;
+    const h = canvas.height;
+
+    const idata = ctx.getImageData(0, 0, w, h);
+    const data = idata.data;
+
+    // Contrast factor calculation: formula (259 * (contrast + 255)) / (255 * (259 - contrast))
+    // We want high contrast. simple linear multiplier centered on 128 is easier.
+    // Let's use a simple contrast stretch. 
+
+    for (let i = 0; i < data.length; i += 4) {
+        // 1. Grayscale (Luma)
+        let gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+
+        // 2. High Contrast
+        // (val - 128) * factor + 128
+        // factor 1.5
+        gray = (gray - 128) * 1.5 + 128;
+
+        // 3. Brightness bump
+        gray = gray * 1.05;
+
+        // Clamp
+        gray = Math.min(255, Math.max(0, gray));
+
+        data[i] = gray;
+        data[i + 1] = gray;
+        data[i + 2] = gray;
+    }
+    ctx.putImageData(idata, 0, 0);
 }
 
 // Reduced default grain as requested
