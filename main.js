@@ -142,7 +142,7 @@ function applyFilterBase(filter) {
             break;
         case 'bw-high':
             // Crushed blacks, high contrast B&W
-            ctx.filter = 'grayscale(100%) contrast(1.5) brightness(1.05)';
+            ctx.filter = 'grayscale(100%) contrast(1.6) brightness(1.05)';
             break;
         case 'ilford':
             // Ilford B&W - base filter applied, main processing in post
@@ -373,6 +373,9 @@ function applyPrismEffect() {
     // We want a very soft, dreamy look.
     // Instead of sharp shapes, we'll use large, diffuse gradients.
 
+    // Check if current filter is B&W
+    const isBW = currentFilter === 'ilford' || currentFilter === 'bw-high';
+
     const numFlares = 2 + Math.floor(random() * 2); // 2-3 large flares
 
     for (let i = 0; i < numFlares; i++) {
@@ -386,31 +389,39 @@ function applyPrismEffect() {
 
         const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
 
-        // Pick a color palette based on reference images:
-        // Option A: Warm Amber/Gold (common in vintage prism shots)
-        // Option B: Cool Cyan/White (common in modern prism shots)
-        // Option C: Mixed
-
-        const palette = random();
-        if (palette < 0.4) {
-            // Warm Amber
-            grad.addColorStop(0, 'rgba(255, 200, 150, 0.4)'); // Bright warm center
-            grad.addColorStop(0.4, 'rgba(255, 100, 50, 0.2)'); // Red-orange mid
-            grad.addColorStop(0.7, 'rgba(100, 50, 0, 0.1)'); // Fading fast
-            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        } else if (palette < 0.7) {
-            // Cool Ethereal
-            grad.addColorStop(0, 'rgba(200, 240, 255, 0.3)'); // White-blue center
-            grad.addColorStop(0.4, 'rgba(100, 180, 255, 0.15)'); // Cyan mid
-            grad.addColorStop(0.8, 'rgba(0, 50, 100, 0)');
+        if (isBW) {
+            // Grayscale Light Leaks
+            const intensity = 0.2 + random() * 0.15;
+            grad.addColorStop(0, `rgba(255, 255, 255, ${intensity})`);
+            grad.addColorStop(0.5, `rgba(200, 200, 200, ${intensity * 0.5})`);
             grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
         } else {
-            // Spectral/Rainbow (subtle)
-            grad.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
-            grad.addColorStop(0.2, 'rgba(255, 255, 0, 0.15)'); // Yellow
-            grad.addColorStop(0.4, 'rgba(255, 0, 0, 0.1)');   // Red
-            grad.addColorStop(0.6, 'rgba(0, 0, 255, 0.1)');   // Blue
-            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            // Pick a color palette based on reference images:
+            // Option A: Warm Amber/Gold (common in vintage prism shots)
+            // Option B: Cool Cyan/White (common in modern prism shots)
+            // Option C: Mixed
+
+            const palette = random();
+            if (palette < 0.4) {
+                // Warm Amber
+                grad.addColorStop(0, 'rgba(255, 200, 150, 0.4)'); // Bright warm center
+                grad.addColorStop(0.4, 'rgba(255, 100, 50, 0.2)'); // Red-orange mid
+                grad.addColorStop(0.7, 'rgba(100, 50, 0, 0.1)'); // Fading fast
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            } else if (palette < 0.7) {
+                // Cool Ethereal
+                grad.addColorStop(0, 'rgba(200, 240, 255, 0.3)'); // White-blue center
+                grad.addColorStop(0.4, 'rgba(100, 180, 255, 0.15)'); // Cyan mid
+                grad.addColorStop(0.8, 'rgba(0, 50, 100, 0)');
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            } else {
+                // Spectral/Rainbow (subtle)
+                grad.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
+                grad.addColorStop(0.2, 'rgba(255, 255, 0, 0.15)'); // Yellow
+                grad.addColorStop(0.4, 'rgba(255, 0, 0, 0.1)');   // Red
+                grad.addColorStop(0.6, 'rgba(0, 0, 255, 0.1)');   // Blue
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            }
         }
 
         // Use 'screen' or 'Overlay' for that light-leak feel
