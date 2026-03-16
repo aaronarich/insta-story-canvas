@@ -35,6 +35,18 @@ const randomPrismBtn = document.getElementById('random-prism-btn');
 let isGrainEnabled = false;
 let isPrismEnabled = false;
 
+// Toast notification helper
+const toastEl = document.getElementById('toast');
+let toastTimer = null;
+function showToast(message, duration = 2500) {
+    toastEl.textContent = message;
+    toastEl.className = 'toast toast-visible';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+        toastEl.classList.remove('toast-visible');
+    }, duration);
+}
+
 // Initialize canvas
 function initCanvas() {
     canvas.width = CANVAS_WIDTH;
@@ -257,8 +269,6 @@ function applyIlford() {
     }
     ctx.putImageData(idata, 0, 0);
 
-    ctx.putImageData(idata, 0, 0);
-
     // Grain handled by toggle+postProcess
 }
 
@@ -396,15 +406,14 @@ function applyPrismEffect() {
     const h = canvas.height;
 
     // Seeded random
-    let seed = (window.prismSeed || 0.45) * 2147483647;
+    if (!window.prismSeed) {
+        window.prismSeed = Math.random();
+    }
+    let seed = window.prismSeed * 2147483647;
     const random = () => {
         seed = (seed * 16807) % 2147483647;
         return (seed - 1) / 2147483646;
     };
-
-    if (!window.prismSeed) {
-        window.prismSeed = Math.random();
-    }
 
     ctx.save();
 
@@ -523,9 +532,9 @@ fileInput.addEventListener('change', (e) => {
                 currentImage = img;
                 console.log('Image loaded:', img.width, img.height, 'Mode:', appMode);
 
-                // Reset scale to fit width initially if too large (only in Story mode)
-                if (appMode === 'story' && img.width > canvas.width) {
-                    scale = canvas.width / img.width;
+                // Reset scale when loading a new image in Story mode
+                if (appMode === 'story') {
+                    scale = img.width > canvas.width ? canvas.width / img.width : 1;
                 }
                 scaleValue.textContent = `${scale.toFixed(2)}x`;
                 draw();
@@ -619,7 +628,7 @@ saveBtn.addEventListener('click', () => {
     try {
         canvas.toBlob(async (blob) => {
             if (!blob) {
-                alert('Failed to generate image.');
+                showToast('Failed to generate image');
                 return;
             }
 
@@ -672,7 +681,7 @@ saveBtn.addEventListener('click', () => {
         }, 'image/jpeg', 0.95);
     } catch (error) {
         console.error('Error saving image:', error);
-        alert('Failed to save image.');
+        showToast('Failed to save image');
     }
 });
 
@@ -681,7 +690,7 @@ let isLongPress = false;
 
 function saveFavorite() {
     localStorage.setItem('favScale', scale);
-    alert(`Saved ${scale.toFixed(2)}x as favorite size!`);
+    showToast(`Saved ${scale.toFixed(2)}x as favorite`);
     updateFavButtonTitle();
 }
 
@@ -781,8 +790,10 @@ tabBtns.forEach(btn => {
 
 const updateSW = registerSW({
     onNeedRefresh() {
-        if (confirm('New content available. Reload?')) {
-            updateSW(true)
-        }
+        const msg = document.createElement('div');
+        msg.className = 'toast toast-visible toast-update';
+        msg.innerHTML = `<span>Update available</span><button class="toast-update-btn">Reload</button>`;
+        msg.querySelector('button').addEventListener('click', () => updateSW(true));
+        document.getElementById('app').appendChild(msg);
     },
 })
