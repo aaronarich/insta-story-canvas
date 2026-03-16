@@ -48,17 +48,14 @@ canvas {
 }
 
 .mode-tabs {
-  position: absolute;
-  top: max(1rem, env(safe-area-inset-top));
-  left: 50%;
-  transform: translateX(-50%);
+  width: 100%;
   display: flex;
+  justify-content: center;
   background: rgba(20, 20, 20, 0.6);
   backdrop-filter: blur(10px);
   padding: 4px;
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  z-index: 10;
 }
 
 .tab-btn {
