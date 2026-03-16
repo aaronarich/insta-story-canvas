@@ -147,14 +147,16 @@ function draw() {
 function applyFilterBase(filter) {
     switch (filter) {
         case 'portra':
-            // Warm, slightly elevated saturation — sepia lifted for more visible warmth
-            ctx.filter = 'contrast(1.15) saturate(1.35) sepia(0.2) brightness(1.05)';
+            // Kodak Portra 400 — warm amber cast, lifted shadows, moderate saturation
+            ctx.filter = 'brightness(1.1) contrast(1.08) saturate(1.3) sepia(0.22)';
             break;
         case 'ektar':
-            ctx.filter = 'contrast(1.25) saturate(1.4) brightness(1.02) sepia(0.05)';
+            // Kodak Ektar 100 — punchy, vivid, high saturation, strong reds
+            ctx.filter = 'contrast(1.35) saturate(1.7) brightness(1.0) hue-rotate(-8deg)';
             break;
         case 'velvia':
-            ctx.filter = 'contrast(1.3) saturate(1.8) brightness(0.95) hue-rotate(-5deg)';
+            // Fuji Velvia 50 — extreme saturation, deep contrast, vivid cool greens
+            ctx.filter = 'contrast(1.5) saturate(2.2) brightness(0.88) hue-rotate(-14deg)';
             break;
         case 'pro400h':
             // Overexposed pastel feel — lifted brightness, slightly desaturated contrast
@@ -456,9 +458,9 @@ function applyPrismEffect() {
 // CSS filter approximations for thumbnails (avoids pixel manipulation on tiny canvases)
 function getFilterCSSForThumb(filterId) {
     switch (filterId) {
-        case 'portra':    return 'contrast(1.15) saturate(1.35) sepia(0.2) brightness(1.05)';
-        case 'ektar':     return 'contrast(1.25) saturate(1.4) brightness(1.02) sepia(0.05)';
-        case 'velvia':    return 'contrast(1.3) saturate(1.8) brightness(0.95) hue-rotate(-5deg)';
+        case 'portra':    return 'brightness(1.1) contrast(1.08) saturate(1.3) sepia(0.22)';
+        case 'ektar':     return 'contrast(1.35) saturate(1.7) brightness(1.0) hue-rotate(-8deg)';
+        case 'velvia':    return 'contrast(1.5) saturate(2.2) brightness(0.88) hue-rotate(-14deg)';
         case 'pro400h':   return 'brightness(1.25) contrast(0.88) saturate(1.1) sepia(0.12)';
         case 'cinestill': return 'contrast(1.1) saturate(1.2) hue-rotate(-20deg) brightness(1.05)';
         case 'polaroid':  return 'contrast(0.9) brightness(1.1) saturate(0.8) sepia(0.25)';

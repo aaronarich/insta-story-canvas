@@ -35,8 +35,8 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 1rem;
-  padding-top: max(1rem, env(safe-area-inset-top));
+  padding: 0.5rem;
+  padding-top: max(0.5rem, env(safe-area-inset-top));
   overflow: hidden;
   background-color: #000000;
 }
