@@ -11,7 +11,7 @@ const scaleDownBtn = document.getElementById('scale-down-btn');
 const scaleUpBtn = document.getElementById('scale-up-btn');
 const SCALE_STEP = 0.05;
 const SCALE_MIN = 0.1;
-const SCALE_MAX = 3;
+const SCALE_MAX = 1.0;
 const colorPicker = document.getElementById('bg-color');
 const saveBtn = document.getElementById('save-btn');
 const favBtn = document.getElementById('fav-btn');
@@ -21,8 +21,6 @@ const randomLeakBtn = document.getElementById('random-leak-btn');
 // State
 let currentImage = null;
 let scale = 1;
-let imgOffsetX = 0;
-let imgOffsetY = 0;
 let backgroundColor = '#ffffff';
 let currentFilter = 'none';
 let leakSeed = Math.random();
@@ -108,16 +106,22 @@ function draw() {
         let x = 0, y = 0, imgWidth = 0, imgHeight = 0;
 
         if (appMode === 'story') {
-            imgWidth = currentImage.width * scale;
-            imgHeight = currentImage.height * scale;
-            x = (canvas.width - imgWidth) / 2 + imgOffsetX;
-            y = (canvas.height - imgHeight) / 2 + imgOffsetY;
+            const fitScale = Math.min(CANVAS_WIDTH / currentImage.width, CANVAS_HEIGHT / currentImage.height);
+            imgWidth = currentImage.width * fitScale * scale;
+            imgHeight = currentImage.height * fitScale * scale;
+            x = (canvas.width - imgWidth) / 2;
+            y = (canvas.height - imgHeight) / 2;
         } else {
             imgWidth = canvas.width;
             imgHeight = canvas.height;
             x = 0;
             y = 0;
         }
+
+        // Clip all effects to the image region
+        ctx.beginPath();
+        ctx.rect(x, y, imgWidth, imgHeight);
+        ctx.clip();
 
         // Apply Filters
         applyFilterBase(currentFilter);
@@ -127,7 +131,7 @@ function draw() {
         // Post-processing effects
         ctx.filter = 'none'; // Reset filter for overlays
 
-        applyPostProcess(currentFilter);
+        applyPostProcess(currentFilter, x, y, imgWidth, imgHeight);
 
         if (isLightLeakEnabled) {
             applyLightLeak();
@@ -177,7 +181,7 @@ function applyFilterBase(filter) {
     }
 }
 
-function applyPostProcess(filter) {
+function applyPostProcess(filter, imgX, imgY, imgW, imgH) {
     if (isGrainEnabled) {
         if (filter === 'ektar') applyGrain(0.22);
         else if (filter === 'velvia') applyGrain(0.15);
@@ -193,8 +197,8 @@ function applyPostProcess(filter) {
     else if (filter === 'cinestill') applyCinestillOverlayBase();
     else if (filter === 'polaroid') applyPolaroidOverlayBase();
     else if (filter === 'expired') applyExpiredOverlayBase();
-    else if (filter === 'ilford') applyIlford();
-    else if (filter === 'bw-high') applyBWHigh();
+    else if (filter === 'ilford') applyIlford(imgX, imgY, imgW, imgH);
+    else if (filter === 'bw-high') applyBWHigh(imgX, imgY, imgW, imgH);
 }
 
 function applyPro400HOverlayBase() {
@@ -259,11 +263,8 @@ function applyExpiredOverlayBase() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
-function applyIlford() {
-    const w = canvas.width;
-    const h = canvas.height;
-
-    const idata = ctx.getImageData(0, 0, w, h);
+function applyIlford(imgX, imgY, imgW, imgH) {
+    const idata = ctx.getImageData(imgX, imgY, imgW, imgH);
     const data = idata.data;
 
     for (let i = 0; i < data.length; i += 4) {
@@ -274,14 +275,11 @@ function applyIlford() {
         data[i + 1] = final;
         data[i + 2] = final;
     }
-    ctx.putImageData(idata, 0, 0);
+    ctx.putImageData(idata, imgX, imgY);
 }
 
-function applyBWHigh() {
-    const w = canvas.width;
-    const h = canvas.height;
-
-    const idata = ctx.getImageData(0, 0, w, h);
+function applyBWHigh(imgX, imgY, imgW, imgH) {
+    const idata = ctx.getImageData(imgX, imgY, imgW, imgH);
     const data = idata.data;
 
     for (let i = 0; i < data.length; i += 4) {
@@ -293,7 +291,7 @@ function applyBWHigh() {
         data[i + 1] = gray;
         data[i + 2] = gray;
     }
-    ctx.putImageData(idata, 0, 0);
+    ctx.putImageData(idata, imgX, imgY);
 }
 
 function applyGrain(strength = 0.18) {
@@ -584,14 +582,11 @@ fileInput.addEventListener('change', (e) => {
             img.onload = () => {
                 currentImage = img;
 
-                // Reset scale and position when loading a new image in Story mode
+                // Reset scale when loading a new image in Story mode
                 if (appMode === 'story') {
-                    scale = img.width > canvas.width ? canvas.width / img.width : 1;
-                    imgOffsetX = 0;
-                    imgOffsetY = 0;
+                    scale = 1.0;
                 }
                 scaleValue.textContent = `${scale.toFixed(2)}x`;
-                updateCanvasCursor();
                 draw();
                 updateThumbnails();
             };
@@ -786,66 +781,6 @@ favBtn.addEventListener('click', (e) => {
     loadFavorite();
 });
 
-// --- Drag to reposition image (story mode only) ---
-
-let isDragging = false;
-let dragStartX = 0, dragStartY = 0;
-let dragStartOffsetX = 0, dragStartOffsetY = 0;
-
-function updateCanvasCursor() {
-    canvas.style.cursor = (appMode === 'story' && currentImage) ? 'grab' : 'default';
-}
-
-canvas.addEventListener('mousedown', (e) => {
-    if (appMode !== 'story' || !currentImage) return;
-    isDragging = true;
-    dragStartX = e.clientX;
-    dragStartY = e.clientY;
-    dragStartOffsetX = imgOffsetX;
-    dragStartOffsetY = imgOffsetY;
-    canvas.style.cursor = 'grabbing';
-});
-
-window.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    const ratio = canvas.width / canvas.getBoundingClientRect().width;
-    imgOffsetX = dragStartOffsetX + (e.clientX - dragStartX) * ratio;
-    imgOffsetY = dragStartOffsetY + (e.clientY - dragStartY) * ratio;
-    draw();
-});
-
-window.addEventListener('mouseup', () => {
-    if (isDragging) {
-        isDragging = false;
-        updateCanvasCursor();
-    }
-});
-
-canvas.addEventListener('touchstart', (e) => {
-    if (appMode !== 'story' || !currentImage) return;
-    if (e.touches.length !== 1) return;
-    e.preventDefault();
-    const touch = e.touches[0];
-    isDragging = true;
-    dragStartX = touch.clientX;
-    dragStartY = touch.clientY;
-    dragStartOffsetX = imgOffsetX;
-    dragStartOffsetY = imgOffsetY;
-}, { passive: false });
-
-canvas.addEventListener('touchmove', (e) => {
-    if (!isDragging) return;
-    e.preventDefault();
-    const touch = e.touches[0];
-    const ratio = canvas.width / canvas.getBoundingClientRect().width;
-    imgOffsetX = dragStartOffsetX + (touch.clientX - dragStartX) * ratio;
-    imgOffsetY = dragStartOffsetY + (touch.clientY - dragStartY) * ratio;
-    draw();
-}, { passive: false });
-
-canvas.addEventListener('touchend', () => { isDragging = false; });
-canvas.addEventListener('touchcancel', () => { isDragging = false; });
-
 // --- Mode tabs ---
 
 const storyControls = document.getElementById('story-controls');
@@ -864,9 +799,6 @@ tabBtns.forEach(btn => {
             storyControls.classList.add('hidden');
         }
 
-        imgOffsetX = 0;
-        imgOffsetY = 0;
-        updateCanvasCursor();
         draw();
     });
 });
